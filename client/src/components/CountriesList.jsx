@@ -1,23 +1,20 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import { debounce } from "lodash"; // Import debounce from lodash
 
 const CountriesList = () => {
-  const [countries, setCountries] = useState([]);
+ 
   const [loading, setLoading] = useState(false);
   const [filterLoading, setFilterLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [regions, setRegions] = useState([]);
   const [timezones, setTimezones] = useState([]);
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedTimezone, setSelectedTimezone] = useState("");
-  const [searchQuery, setSearchQuery] = useState(""); // State to store search input
+  const [searchQuery, setSearchQuery] = useState(""); 
+  const [filteredCountries, setFilteredCountries] = useState([]);
 
-  const loadMoreRef = useRef(null);
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
 
   // Fetch available regions and timezones when component mounts
   useEffect(() => {
@@ -31,147 +28,92 @@ const CountriesList = () => {
         console.error("Error fetching filters:", error);
       }
     };
-
     fetchFilters();
   }, []);
 
-  // Debounced fetchCountries function
-  const debouncedFetchCountries = useCallback(
-    debounce(async () => {
-      if (filterLoading || !searchQuery.trim()) return; // Don't fetch if no search query or loading is in progress
-
-      setFilterLoading(true);
-
-      try {
-        let url = `/api/country-or-capital/${searchQuery}?page=${page}&limit=20`;
-
-        const response = await axios.get(url);
-
-        const newCountries = response.data.countries || [];
-        setCountries(newCountries);
-        setPage(1);
-        setHasMore(newCountries.length > 0);
-      } catch (error) {
-        setError("Failed to fetch country data");
-      } finally {
-        setFilterLoading(false);
-      }
-    }, 500), // 500ms debounce delay
-    [searchQuery, page] // Only re-run if searchQuery or page changes
-  );
-
-  // Fetch countries with filters
-  const fetchCountries = useCallback(async () => {
-    if (loading || filterLoading || !hasMore) return;
-    setLoading(true);
-
-    try {
-      let url = "http://localhost:7000/api/countries";
-      
-      // Construct URL based on filters and search query
-      if (selectedRegion) {
-        url = `http://localhost:7000/api/countries/region/${selectedRegion}`;
-      } else if (selectedTimezone) {
-        url = `http://localhost:7000/api/search-timezone?timezone=${selectedTimezone}`;
-      } else if (searchQuery) {
-        url = `http://localhost:7000/api/country-or-capital/${searchQuery}`;
-      }
-
-      const response = await axios.get(url, {
-        params: { page:100, limit: 500 },
-      });
-
-      const newCountries = response.data.countries || [response.data]; // Handle case when searching for a single country
-
-      if (newCountries.length === 0) {
-        setHasMore(false);
-      }
-
-      setCountries((prevCountries) => {
-        // Keep the previously fetched countries if no filters/search applied
-        if (selectedRegion || selectedTimezone || searchQuery) {
-          return newCountries;
-        } else {
-          return [...prevCountries, ...newCountries];
-        }
-      });
-
-      setPage((prevPage) => prevPage + 1);
-    } catch (error) {
-      setError("Failed to fetch country data");
-    } finally {
-      setLoading(false);
-      setFilterLoading(false);
-    }
-  }, [loading, filterLoading, hasMore, page, selectedRegion, selectedTimezone, searchQuery]);
-
-  // Intersection observer for infinite scroll
-  const handleIntersection = useCallback(([entry]) => {
-    if (entry.isIntersecting && hasMore && !filterLoading) {
-      fetchCountries();
-    }
-  }, [fetchCountries, hasMore, filterLoading]);
-
+  // Fetch all countries initially
   useEffect(() => {
-    const observer = new IntersectionObserver(handleIntersection, {
-      rootMargin: "100px",
-    });
-
-    const currentRef = loadMoreRef.current;
-
-    if (currentRef) {
-      observer.observe(currentRef);
-    }
-
-    return () => {
-      if (currentRef) {
-        observer.unobserve(currentRef);
+    const fetchCountries = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get("http://localhost:7000/api/countries");
+       
+        setFilteredCountries(res.data.countries);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching countries:", error);
+        setLoading(false);
       }
     };
-  }, [handleIntersection]);
-
-  useEffect(() => {
     fetchCountries();
-  }, [fetchCountries]);
+  }, []);
+
+  // Fetch countries based on selected region
+  useEffect(() => {
+    if (!selectedRegion) return;
+
+    const fetchCountriesByRegion = async () => {
+      try {
+        setFilterLoading(true);
+        const res = await axios.get(`http://localhost:7000/api/countries/region/${selectedRegion}`);
+        setFilteredCountries(res.data.countries);
+        setFilterLoading(false);
+      } catch (error) {
+        console.error(error);
+        setFilterLoading(false);
+      }
+    };
+
+    fetchCountriesByRegion();
+  }, [selectedRegion]);
+
+  // Fetch countries based on selected timezone
+  useEffect(() => {
+    if (!selectedTimezone) return;
+
+    const fetchCountriesByTimeZone = async () => {
+      try {
+        setFilterLoading(true);
+        const res = await axios.get(`http://localhost:7000/api/countries/timezone/${selectedTimezone}`);
+        setFilteredCountries(res.data.countries);
+        setFilterLoading(false);
+      } catch (error) {
+        console.error(error);
+        setFilterLoading(false);
+      }
+    };
+
+    fetchCountriesByTimeZone();
+  }, [selectedTimezone]);
+
+  // Fetch countries by search query
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+
+    try {
+      setFilterLoading(true);
+      const res = await axios.get(`http://localhost:7000/api/country-or-capital/${searchQuery}`);
+      setFilteredCountries(res.data.countries);
+      setFilterLoading(false);
+    } catch (error) {
+      console.error(error);
+      setFilterLoading(false);
+    }
+  };
 
   // Handling region change
   const handleRegionChange = (e) => {
     setSelectedRegion(e.target.value);
     setSelectedTimezone("");
-    setSearchQuery(""); // Clear search query when changing region
-    setPage(1);
-    setCountries([]);
-    setFilterLoading(true);
+    setSearchQuery("");
   };
 
   // Handling timezone change
   const handleTimezoneChange = (e) => {
     setSelectedTimezone(e.target.value);
     setSelectedRegion("");
-    setSearchQuery(""); // Clear search query when changing timezone
-    setPage(1);
-    setCountries([]);
-    setFilterLoading(true);
+    setSearchQuery("");
   };
-
-  // Handling search query change
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-     // Call debounced function
-  };
-
-  const handleCountryClick = (code) => {
-    navigate(`/country_information/${code}`); // Navigate to the dynamic route with country code
-  };
-
-  if (loading && page === 1 && !filterLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return <div>{error}</div>;
-  }
 
   return (
     <div>
@@ -183,47 +125,40 @@ const CountriesList = () => {
           type="text"
           placeholder="Search by country or capital"
           value={searchQuery}
-          onChange={handleSearchChange}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="px-4 py-2 border rounded"
         />
+        <button onClick={handleSearch} className="px-4 py-2 bg-blue-500 text-white rounded">Search</button>
       </div>
 
       {/* Region and Timezone Filters */}
       <div className="flex justify-center space-x-4 mb-4">
-        <select
-          value={selectedRegion}
-          onChange={handleRegionChange}
-          className="px-4 py-2 border rounded"
-        >
+        <select value={selectedRegion} onChange={handleRegionChange} className="px-4 py-2 border rounded">
           <option value="">Select Region</option>
           {regions.map((region, index) => (
-            <option key={index} value={region}>
-              {region}
-            </option>
+            <option key={index} value={region}>{region}</option>
           ))}
         </select>
 
-        <select
-          value={selectedTimezone}
-          onChange={handleTimezoneChange}
-          className="px-4 py-2 border rounded"
-        >
+        <select value={selectedTimezone} onChange={handleTimezoneChange} className="px-4 py-2 border rounded">
           <option value="">Select Timezone</option>
           {timezones.map((timezone, index) => (
-            <option key={index} value={timezone}>
-              {timezone}
-            </option>
+            <option key={index} value={timezone}>{timezone}</option>
           ))}
         </select>
       </div>
 
+      {/* Loading and Error Handling */}
+      {loading && <div className="text-center">Loading...</div>}
+      {error && <div className="text-center text-red-500">{error}</div>}
+
       {/* Countries Display */}
-      <div className="grid grid-cols-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {countries.map((country, index) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {filteredCountries.map((country, index) => (
           <div
             key={index}
             className="p-4 border rounded-lg shadow-md text-center cursor-pointer"
-            onClick={() => handleCountryClick(country.code)} // Country code passed on click
+            onClick={() => navigate(`/country_information/${country.code}`)}
           >
             <h3 className="font-bold text-xl">{country.name}</h3>
             <p className="text-gray-600">{country.region}</p>
@@ -232,21 +167,6 @@ const CountriesList = () => {
           </div>
         ))}
       </div>
-
-      {/* Load More Button */}
-      {hasMore && !loading && !filterLoading && (
-        <div className="text-center mt-4">
-          <button
-            onClick={fetchCountries}
-            className="px-6 py-2 bg-blue-500 text-white rounded-full"
-          >
-            Load More
-          </button>
-        </div>
-      )}
-
-      {/* Load More Intersection Observer */}
-      <div ref={loadMoreRef} className="mt-4" />
     </div>
   );
 };
