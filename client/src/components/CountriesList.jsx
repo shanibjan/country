@@ -13,6 +13,7 @@ const CountriesList = () => {
   const [searchQuery, setSearchQuery] = useState(""); 
   const [filteredCountries, setFilteredCountries] = useState([]);
 
+
   const navigate = useNavigate();
 
   // Fetch available regions and timezones when component mounts
@@ -103,6 +104,8 @@ const CountriesList = () => {
     setFilteredCountries([])
      
       const res = await axios.get(`http://localhost:7000/api/country-or-capital/${searchQuery}`);
+     
+      
       searchedCountry.push(res.data);
       setFilteredCountries(searchedCountry);
       setSearchQuery("")
