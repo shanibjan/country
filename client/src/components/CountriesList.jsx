@@ -25,6 +25,7 @@ const CountriesList = () => {
         setTimezones(timezoneResponse.data.timezones);
       } catch (error) {
         console.error("Error fetching filters:", error);
+        setError("Error fetching filters")
       }
     };
     fetchFilters();
@@ -41,6 +42,7 @@ const CountriesList = () => {
         setLoading(false);
       } catch (error) {
         console.error("Error fetching countries:", error);
+        setError("Error fetching countries")
         setLoading(false);
       }
     };
@@ -62,6 +64,7 @@ const CountriesList = () => {
         setLoading(false)
       } catch (error) {
         console.error(error);
+        setError("Error fetching countries")
         setLoading(false)
       }
     };
@@ -82,6 +85,7 @@ const CountriesList = () => {
         setLoading(false)
       } catch (error) {
         console.error(error);
+        setError("Error fetching countries")
         setLoading(false)
       }
     };
@@ -106,6 +110,7 @@ const CountriesList = () => {
      
     } catch (error) {
       console.error(error);
+      setError("Error fetching countries")
       setLoading(false)
     }
   };
