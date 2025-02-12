@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect} from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const CountriesList = () => {
  
   const [loading, setLoading] = useState(false);
-  const [filterLoading, setFilterLoading] = useState(false);
   const [error, setError] = useState(null);
   const [regions, setRegions] = useState([]);
   const [timezones, setTimezones] = useState([]);
@@ -50,17 +49,20 @@ const CountriesList = () => {
 
   // Fetch countries based on selected region
   useEffect(() => {
+    
+   
     if (!selectedRegion) return;
 
     const fetchCountriesByRegion = async () => {
       try {
-        setFilterLoading(true);
+        setLoading(true)
+        setFilteredCountries([])
         const res = await axios.get(`http://localhost:7000/api/countries/region/${selectedRegion}`);
         setFilteredCountries(res.data.countries);
-        setFilterLoading(false);
+        setLoading(false)
       } catch (error) {
         console.error(error);
-        setFilterLoading(false);
+        setLoading(false)
       }
     };
 
@@ -73,31 +75,38 @@ const CountriesList = () => {
 
     const fetchCountriesByTimeZone = async () => {
       try {
-        setFilterLoading(true);
+        setLoading(true);
+        setFilteredCountries([])
         const res = await axios.get(`http://localhost:7000/api/countries/timezone/${selectedTimezone}`);
         setFilteredCountries(res.data.countries);
-        setFilterLoading(false);
+        setLoading(false)
       } catch (error) {
         console.error(error);
-        setFilterLoading(false);
+        setLoading(false)
       }
     };
 
     fetchCountriesByTimeZone();
   }, [selectedTimezone]);
-
+  let searchedCountry=[]
   // Fetch countries by search query
   const handleSearch = async () => {
+    
     if (!searchQuery.trim()) return;
 
     try {
-      setFilterLoading(true);
+      setLoading(true)
+    setFilteredCountries([])
+     
       const res = await axios.get(`http://localhost:7000/api/country-or-capital/${searchQuery}`);
-      setFilteredCountries(res.data.countries);
-      setFilterLoading(false);
+      searchedCountry.push(res.data);
+      setFilteredCountries(searchedCountry);
+      setSearchQuery("")
+      setLoading(false)
+     
     } catch (error) {
       console.error(error);
-      setFilterLoading(false);
+      setLoading(false)
     }
   };
 

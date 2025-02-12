@@ -77,6 +77,7 @@ router.get("/country-or-capital/:name", async (req, res) => {
 
       const capitalInfo = {
         name: capitalData.name.common,
+        code: capitalData.cca2,
         population: capitalData.population,
         currencies: capitalData.currencies ? Object.values(capitalData.currencies).map(currency => currency.name) : 'No currency available',
         languages: capitalData.languages ? Object.values(capitalData.languages) : 'No languages available',
